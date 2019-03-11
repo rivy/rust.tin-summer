@@ -4,12 +4,15 @@ extern crate clap;
 #[cfg(target = "windows")]
 extern crate ansi_term;
 
+extern crate atty;
 extern crate colored;
 extern crate liboskar;
+extern crate regex;
 
 use clap::{App, AppSettings};
 use colored::*;
 use liboskar::prelude::*;
+use regex::Regex;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
@@ -31,12 +34,34 @@ fn main() {
         .setting(AppSettings::SubcommandRequired)
         .get_matches();
 
-    #[cfg(not(target = "windows"))]
-    let color_ok = true;
-    #[cfg(target = "windows")]
-    let color_ok = !ansi_term::enable_ansi_support().is_ok();
+    let stdout_is_tty = atty::is(atty::Stream::Stdout);
+    let color_when = matches.value_of("color").unwrap_or_else(|| "auto");
 
-    if !color_ok {
+    #[cfg(not(target_os = "windows"))]
+    let color_ok = true;
+    #[cfg(target_os = "windows")]
+    let color_ok = ansi_term::enable_ansi_support().is_ok() || !stdout_is_tty; // check value early; * enable_ansi_support() fails if executed after set_override(); FIXME: bug for colored crate?
+
+    if Regex::new(r"^(always|yes|y)$").unwrap().is_match(color_when) {
+        // println!("always|yes|y|");
+        // println!("color_ok = {}", color_ok);
+        // println!("stdout_is_tty = {}", stdout_is_tty);
+        // println!("color_when = {}", color_when);
+        colored::control::set_override(true);
+    }
+    if Regex::new(r"(^(auto|is_tty|istty|tty)$)|(^$)").unwrap().is_match(color_when) {
+        // println!("auto|tty|");
+        // println!("color_ok = {}", color_ok);
+        // println!("stdout_is_tty = {}", stdout_is_tty);
+        // println!("color_when = {}", color_when);
+        colored::control::set_override(stdout_is_tty);
+    }
+    if !color_ok || Regex::new(r"^(never|no|n)$").unwrap().is_match(color_when) {
+        // println!("never|no|n");
+        // println!("cfg!(windows) = {}", cfg!(windows));
+        // println!("color_ok = {}", color_ok);
+        // println!("stdout_is_tty = {}", stdout_is_tty);
+        // println!("color_when = {}", color_when);
         colored::control::set_override(false);
     }
 
