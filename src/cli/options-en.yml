@@ -3,6 +3,16 @@ author: Vanessa McHale <vamchale@gmail.com>
 about: Tool to find large files and project build artifacts. Can also find directory sizes. Unlikely to shatter glass.
 after_help: >
     The Tin Summer is a replacement for du written in Rust. See 'man tin-summer' for more detailed information.
+args:
+    - color:
+        global: true
+        long: color
+        default_value: auto
+        takes_value: true
+        value_name: WHEN
+        empty_values: true
+        # require_equals: true
+        help: Specify color output (always|never|auto)
 subcommands:
     - update:
         visible_alias: "u"
