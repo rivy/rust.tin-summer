@@ -28,27 +28,47 @@ fn main() {
     let yaml = load_yaml!("cli/options-fr.yml");
     #[cfg(feature = "deutsch")]
     let yaml = load_yaml!("cli/options-de.yml");
+
+    eprintln!("args: {:?}", std::env::args());
+
     let matches = App::from_yaml(yaml)
+        .arg(clap::Arg::with_name("color").long("color")
+            .default_value("auto")
+            .global(true)
+            .value_name("WHEN")
+            // .default_arg_value("always")
+            // .takes_value(true)
+            .multiple(true)
+            .min_values(0)
+            .require_equals(true)
+            // .empty_values(true)
+            .overrides_with("color")
+            )
         .version(crate_version!())
         .set_term_width(90)
         .setting(AppSettings::SubcommandRequired)
         .get_matches();
 
     let stdout_is_tty = atty::is(atty::Stream::Stdout);
-    let color_when = matches.value_of("color").unwrap_or_else(|| "auto");
+    let color_when = if let Some(v) = matches.values_of("color") { v.collect::<Vec<_>>().last().unwrap() } else { "auto" };
+    eprintln!("color_when: '{}'", color_when);
+    eprintln!("matches: '{:?}'", matches);
+    eprintln!("is_present('color'): '{:?}'", matches.is_present("color"));
+    eprintln!("occurrences_of('color'): '{:?}'", matches.occurrences_of("color"));
+    eprintln!("values_of('color'): '{:?}'", matches.values_of("color"));
 
     #[cfg(not(target_os = "windows"))]
     let color_ok = true;
     #[cfg(target_os = "windows")]
     let color_ok = ansi_term::enable_ansi_support().is_ok() || !stdout_is_tty; // check value early; * enable_ansi_support() fails if executed after set_override(); FIXME: bug for colored crate?
 
-    if Regex::new(r"^(always|yes|y)$").unwrap().is_match(color_when) {
+    if Regex::new(r"^(always|yes|y|1)$").unwrap().is_match(color_when) {
         colored::control::set_override(true);
     }
     if Regex::new(r"(^(auto|is_tty|istty|tty)$)|(^$)").unwrap().is_match(color_when) {
         colored::control::set_override(stdout_is_tty);
     }
-    if !color_ok || Regex::new(r"^(never|no|n)$").unwrap().is_match(color_when) {
+    if !color_ok || Regex::new(r"^(never|no|n|0)$").unwrap().is_match(color_when) || Regex::new(r"^$").unwrap().is_match(color_when) {
         colored::control::set_override(false);
     }
 
